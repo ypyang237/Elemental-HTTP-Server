@@ -1,6 +1,7 @@
 var http = require('http');
 var fs = require('fs');
 var qs = require('querystring');
+var gutil = require('gulp-util');
 
 
 var server = http.createServer(function(request, response) {
@@ -101,35 +102,61 @@ var server = http.createServer(function(request, response) {
         return response.write(JSON.stringify(failBody));
 
       } else {
-        var myFile = fs.createWriteStream('public' + url);
+          var myFile = fs.createWriteStream('public' + url);
 
-        var successBody = { "success" : true };
-        response.write(JSON.stringify(successBody));
+          var successBody = { "success" : true };
+          response.write(JSON.stringify(successBody));
+          response.statusCode = 200;
+
+          myFile.write(
+          '<!DOCTYPE html>\r\n<html lang="en">\r\n<head>\r\n<meta charset="UTF-8">\r\n<title>\r\n'+
+          'The Elements - Helium</title>\r\n<link rel="stylesheet" href="/css/styles.css">\r\n'+
+          '</head>\r\n<body>\r\n'+
+          '<h1>' + elementName + '</h1>\r\n' +
+          '<h2>' + elementSymbol + '</h2>\r\n' +
+          '<h3>'+ elementAtomicNumber + '</h3>\r\n' +
+          '<p>' + elementDescription + '</p>\r\n'+
+          '<a href="/">back</a>\r\n\r\n</p></body></html>'
+          );
+
+
+        }
+        response.end();
+
+      });
+
+    });
+
+  } //end of PUT request
+
+
+  if(method === 'DELETE') {
+
+    fs.readFile('public/' + url, function(error, chunk) {
+      if(error) {
+        var failBody =  { "error" : "resource " + url + "does not exist" };
+        console.log(gutil.colors.red('File not found, so not deleting.'));
+        response.statusCode = 500;
+        return response.write(JSON.stringify(failBody));
+      }
+      else {
         response.statusCode = 200;
-
-      myFile.write(
-      '<!DOCTYPE html>\r\n<html lang="en">\r\n<head>\r\n<meta charset="UTF-8">\r\n<title>\r\n'+
-      'The Elements - Helium</title>\r\n<link rel="stylesheet" href="/css/styles.css">\r\n'+
-      '</head>\r\n<body>\r\n'+
-      '<h1>' + elementName + '</h1>\r\n' +
-      '<h2>' + elementSymbol + '</h2>\r\n' +
-      '<h3>'+ elementAtomicNumber + '</h3>\r\n' +
-      '<p>' + elementDescription + '</p>\r\n'+
-      '<a href="/">back</a>\r\n\r\n</p></body></html>'
-      );
-
-
+        var successBody = { "success" : true };
+        console.log(gutil.colors.green('File exists. Deleting now ...'));
+        fs.unlink('./public' + url);
+        return response.write(JSON.stringify(successBody));
       }
 
-       response.end();
-    });
-
-
     });
 
 
 
-  }
+  }//end of DELETE request
+
+
+
+
+
 
 }); //end of http.createServer
 

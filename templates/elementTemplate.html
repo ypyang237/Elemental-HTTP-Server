@@ -1,0 +1,21 @@
+//can put this in the server.js for the PostRequest
+
+        fs.readFile('templates/elementTemplate.html', (err, template) => {
+         console.log(template.toString());
+         if(err) {
+            throw new Error(err)
+          }
+         const rendedredTemplate = templateHelper.element( template, data.elementName, data.elementSymbo, data.elementNumber, data.elementDescription);
+        console.log(renderedTemplate)
+        //-> have to be put in the fs.readFile bracket coz of asynchronous programming
+        })
+         we shall parse thru this file and inject all the data we want to display
+         fs.writeFile('public/' + data.elementName + '.html', renderedTemplate, (err) => {
+          if(err) {
+            throw new Error
+          }
+          response.writeHead(200, {
+           'Content-Type' : 'application/json'
+          })
+          response.end(JSON.stringify({ 'success' : true}))
+         }

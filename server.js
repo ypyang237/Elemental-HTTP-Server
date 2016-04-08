@@ -15,28 +15,26 @@ var server = http.createServer(function(request, response) {
  if(request.rawHeaders.indexOf('Authorization') === -1  ) {
     console.log('theres no authorization');
 
-    response.setHeader('WWW-Authenticate', "BasicRealm = SecureArea");
-    return response.end(`<html><body>Not Authorized</body></html>`);
+    response.statusCode =401;
+    response.setHeader('WWW-Authenticate', 'BasicRealm = "SecureArea"');
+    response.end("<html><body>Not Authorized</body></html>");
 
-  }
-  else {
-     console.log('Have authentication, could it be the right password? ');
+  } else {
 
-    var encodedString = request.headers.authorization.substr(6);  // QWxhZGRpbjpvcGVuc2VzYW1l
+    var index = request.rawHeaders.indexOf('Authorization');
+    var encodedString = request.rawHeaders[index+1].substr(6);
     var base64Buffer = new Buffer(encodedString, 'base64');
     var decodedString = base64Buffer.toString();
 
-    if(decodedString.indexOf('Aladdin:opensesame')=== -1){
-      console.log('Nope, wrong, try again');
+    if(decodedString.includes('Aladdin:opensesame')=== false){
 
         response.writeHead(401, {
           'WWW-Authenticate' : "BasicRealm = SecureArea"
          });
 
-          return response.end(`<html><body>Not Authorized</body></html>`);
-    }
+         return response.end(`<html><body>Not Authorized</body></html>`);
 
-    console.log('It is Authorized', decodedString);
+    }
 
     if(method === 'GET') {
 
@@ -69,42 +67,22 @@ var server = http.createServer(function(request, response) {
         result = chunk.toString();
         var parsed = qs.parse(result);
 
-        //fs.readFile('templates/elementTemplate.html', (err, template) => {
-        // console.log(template.toString());
-        // if(err) {
-        //    throw new Error(err)
-        //  }
-        // const rendedredTemplate = templateHelper.element( template, data.elementName, data.elementSymbo, data.elementNumber, data.elementDescription);
-        //console.log(renderedTemplate)   -> have to be put in the fs.readFile bracket coz of asynchronous programming
-        //})
-        // we shall parse thru this file and inject all the data we want to display
-        // fs.writeFile('public/' + data.elementName + '.html', renderedTemplate, (err) => {
-        //  if(err) {
-        //    throw new Error
-        //  }
-        //  response.writeHead(200, {
-        //   'Content-Type' : 'application/json'
-        //  })
-        //  response.end(JSON.stringify({ 'success' : true}))
-        // }
 
         var elementName = parsed.elementName;
         var elementSymbol = parsed.elementSymbol;
         var elementAtomicNumber = parsed.elementAtomicNumber;
         var elementDescription = parsed.elementDescription;
 
-        var myFile = fs.createWriteStream('public/' + elementName + '.html', { encoding: "utf8" }    );
+////NEED TO CHECK IF FILE ALREADY EXISTS, IF IT DOES, THEN RETURN RESPONSEBODY WITH A MESSAGE, FS.STATUS
 
-        myFile.write(
-          '<!DOCTYPE html>\r\n<html lang="en">\r\n<head>\r\n<meta charset="UTF-8">\r\n<title>\r\n'+
-          'The Elements - Helium</title>\r\n<link rel="stylesheet" href="/css/styles.css">\r\n'+
+        fs.writeFile('public/' + elementName.toLowerCase() + '.html',  '<!DOCTYPE html>\r\n<html lang="en">\r\n<head>\r\n<meta charset="UTF-8">\r\n<title>\r\n'+
+          'The Elements - ' + elementName + '</title>\r\n<link rel="stylesheet" href="/css/styles.css">\r\n'+
           '</head>\r\n<body>\r\n'+
           '<h1>' + elementName + '</h1>\r\n' +
           '<h2>' + elementSymbol + '</h2>\r\n' +
           '<h3>Atomic Number '+ elementAtomicNumber + '</h3>\r\n' +
           '<p>' + elementDescription + '</p>\r\n' +
-          '<a href="/">back</a>\r\n</p></body></html>'
-          );
+          '<a href="/">back</a>\r\n</p></body></html>');
 
         var index = fs.readFile('public/index.html', function(error, chunk) {
            var chunky = chunk;
@@ -177,7 +155,7 @@ var server = http.createServer(function(request, response) {
     } //end of PUT request
 
 
-    if(method === 'DELETE') {
+    if(method === 'DELETE') {  //MAKE FILE GO AWAY FFROM INDEX.HTML
 
       fs.readFile('public/' + url, function(error, chunk) {
         if(error) {
@@ -201,7 +179,14 @@ var server = http.createServer(function(request, response) {
 
     }//end of DELETE request
 
+
+
+
   }
+
+
+
+
 
 
 

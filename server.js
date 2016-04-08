@@ -1,7 +1,10 @@
 var http = require('http');
 var fs = require('fs');
-var qs = require('querystring');
-var gutil = require('gulp-util');
+
+var getRequest = require('./lib/get.js');
+var postRequest = require('./lib/post.js');
+var putRequest = require('./lib/put.js');
+var deleteRequest = require('./lib/delete.js');
 
 
 var server = http.createServer(function(request, response) {
@@ -11,188 +14,50 @@ var server = http.createServer(function(request, response) {
 
   var errorBody = null;
 
-
- if(request.rawHeaders.indexOf('Authorization') === -1  ) {
+ if(request.rawHeaders.indexOf('Authorization') === -1 && method !== "GET" ) {
     console.log('theres no authorization');
 
     response.statusCode =401;
     response.setHeader('WWW-Authenticate', 'BasicRealm = "SecureArea"');
     response.end("<html><body>Not Authorized</body></html>");
 
-  } else {
+  } else if (method === "GET") {
+    getRequest(url, response);
+  }
+
+  else {
 
     var index = request.rawHeaders.indexOf('Authorization');
     var encodedString = request.rawHeaders[index+1].substr(6);
     var base64Buffer = new Buffer(encodedString, 'base64');
     var decodedString = base64Buffer.toString();
 
+
     if(decodedString.includes('Aladdin:opensesame')=== false){
 
         response.writeHead(401, {
           'WWW-Authenticate' : "BasicRealm = SecureArea"
          });
-
-         return response.end(`<html><body>Not Authorized</body></html>`);
-
+        return response.end(`<html><body>Not Authorized</body></html>`);
     }
-
-    if(method === 'GET') {
-
-      if(url === '/') {
-        fs.readFile('public/index.html', function(error, chunk) {
-          response.end(chunk);
-        });
-      } else {
-        fs.readFile('public' + url, function(error, chunk) {
-
-          if(error) {
-            return fs.readFile('public/404.html', function(error, chunk) {
-
-              if(error) { console.log('cannot read 404 HTML'); }
-
-              response.end(chunk);
-            });
-          }
-          return response.end(chunk);
-        });
-      }
-    }  //end of if method is get
-
 
 
     if(method === 'POST' && url === '/elements') {
-
-      request.on('data', function(chunk) {
-
-        result = chunk.toString();
-        var parsed = qs.parse(result);
-
-
-        var elementName = parsed.elementName;
-        var elementSymbol = parsed.elementSymbol;
-        var elementAtomicNumber = parsed.elementAtomicNumber;
-        var elementDescription = parsed.elementDescription;
-
-////NEED TO CHECK IF FILE ALREADY EXISTS, IF IT DOES, THEN RETURN RESPONSEBODY WITH A MESSAGE, FS.STATUS
-
-        fs.writeFile('public/' + elementName.toLowerCase() + '.html',  '<!DOCTYPE html>\r\n<html lang="en">\r\n<head>\r\n<meta charset="UTF-8">\r\n<title>\r\n'+
-          'The Elements - ' + elementName + '</title>\r\n<link rel="stylesheet" href="/css/styles.css">\r\n'+
-          '</head>\r\n<body>\r\n'+
-          '<h1>' + elementName + '</h1>\r\n' +
-          '<h2>' + elementSymbol + '</h2>\r\n' +
-          '<h3>Atomic Number '+ elementAtomicNumber + '</h3>\r\n' +
-          '<p>' + elementDescription + '</p>\r\n' +
-          '<a href="/">back</a>\r\n</p></body></html>');
-
-        var index = fs.readFile('public/index.html', function(error, chunk) {
-           var chunky = chunk;
-           var addLink = (chunky.toString().substr(0, 258) +
-            '\r\n' + '<li>'+ '\r\n' + '<a href="/' + elementName + '.html">' + elementName + '</a>'+ '\r\n' + '</li>' +
-            chunky.toString().substr(258) );
-
-          var myFile = fs.createWriteStream('public/index.html');
-          myFile.write(addLink);
-
-          });
-
-        var responseBody = ({'success' : true});
-        response.write(JSON.stringify(responseBody));
-        response.statusCode = 200;
-
-        response.end();
-
-      });
-
-      request.on('end', function() {
-        //VALIDATION CHECK, if it === 'undefined'
-      });
-
-    }  //end of POST
+      postRequest(url, request, response);
+    }
 
     if(method === 'PUT') {
+      putRequest(url, request, response);
+    }
 
-      request.on('data', function(chunk) {
+    if(method === 'DELETE') {
+      deleteRequest(url, response);
+    }
 
-      result = chunk.toString();
-      var parsed = qs.parse(result);
-
-      var elementName = parsed.elementName;
-      var elementSymbol = parsed.elementSymbol;
-      var elementAtomicNumber = parsed.elementAtomicNumber;
-      var elementDescription = parsed.elementDescription;
-
-        fs.readFile('public/' + url, function(error, chunk) {
-        if(error) {
-          var failBody = { "error" : "resource /carbon.html does not exist" };
-          response.statusCode = 500;
-          return response.write(JSON.stringify(failBody));
-
-        } else {
-            var myFile = fs.createWriteStream('public' + url);
-
-            var successBody = { "success" : true };
-            response.write(JSON.stringify(successBody));
-            response.statusCode = 200;
-
-            myFile.write(
-            '<!DOCTYPE html>\r\n<html lang="en">\r\n<head>\r\n<meta charset="UTF-8">\r\n<title>\r\n'+
-            'The Elements - Helium</title>\r\n<link rel="stylesheet" href="/css/styles.css">\r\n'+
-            '</head>\r\n<body>\r\n'+
-            '<h1>' + elementName + '</h1>\r\n' +
-            '<h2>' + elementSymbol + '</h2>\r\n' +
-            '<h3>'+ elementAtomicNumber + '</h3>\r\n' +
-            '<p>' + elementDescription + '</p>\r\n'+
-            '<a href="/">back</a>\r\n\r\n</p></body></html>'
-            );
-
-          }
-          response.end();
-
-        });
-
-      });
-
-    } //end of PUT request
-
-
-    if(method === 'DELETE') {  //MAKE FILE GO AWAY FFROM INDEX.HTML
-
-      fs.readFile('public/' + url, function(error, chunk) {
-        if(error) {
-          var failBody =  { "error" : "resource " + url + " does not exist" };
-          console.log(gutil.colors.red('File not found, so not deleting.'));
-          response.statusCode = 500;
-          response.write(JSON.stringify(failBody));
-          return response.end();
-        }
-        else {
-          response.statusCode = 200;
-          var successBody = { "success" : true };
-          console.log(gutil.colors.green('File exists. Deleting now ...'));
-          fs.unlink('./public' + url);
-          response.write(JSON.stringify(successBody));
-          return response.end();
-
-        }
-
-      });
-
-    }//end of DELETE request
-
-
-
-
-  }
-
-
-
-
-
+  } //end of else statement
 
 
 }); //end of http.createServer
-
-
 
 server.listen({port: 8080}, function() {
   var address = server.address();

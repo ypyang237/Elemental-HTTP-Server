@@ -15,10 +15,10 @@ function templateCreator(options) {
     if(err) {
       throw new Error(err);
     }
-    var renderedTemplate = elementBuilder( template, options.elementName,'B', 5, 'earthy');
+    var renderedTemplate = elementBuilder( template, options.elementName, options, 5, 'earthy');
     console.log(renderedTemplate);
 
-    fs.writeFile('public/' +  + '.html', renderedTemplate, (err) => {
+    fs.writeFile('public/' + options.elementName + '.html', renderedTemplate, (err) => {
       if(err) {
         throw (err);
       }
